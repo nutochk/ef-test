@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
 type Config struct {
@@ -26,6 +28,16 @@ func New(cfg Config) (*pgx.Conn, error) {
 	conn, err := pgx.Connect(context.Background(), connString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
+	}
+
+	migrationsDir := "./migrations"
+	connConfig, err := pgx.ParseConfig(connString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+	sqlDB := stdlib.OpenDB(*connConfig)
+	if err = goose.Up(sqlDB, migrationsDir); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 	return conn, nil
 }
