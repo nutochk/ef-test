@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -37,7 +38,9 @@ func New(cfg Config) (*pgx.Conn, error) {
 	}
 	sqlDB := stdlib.OpenDB(*connConfig)
 	if err = goose.Up(sqlDB, migrationsDir); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
+		if !errors.Is(err, goose.ErrNoMigrations) {
+			return nil, fmt.Errorf("failed to apply migrations: %w", err)
+		}
 	}
 	return conn, nil
 }

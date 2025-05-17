@@ -29,9 +29,11 @@ func (l *apiLogger) Debug(msg string, fields ...zap.Field) {
 }
 
 func New() (*apiLogger, error) {
-	l, err := zap.NewProduction()
-	if err != nil {
+	config := zap.NewProductionConfig()
+	config.Level = zap.NewAtomicLevelAt(zap.DebugLevel) // Включаем Debug
 
+	l, err := config.Build()
+	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
 	return &apiLogger{logger: l}, nil
