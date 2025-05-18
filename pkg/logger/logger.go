@@ -8,27 +8,27 @@ import (
 	"go.uber.org/zap"
 )
 
-type apiLogger struct {
+type Logger struct {
 	logger *zap.Logger
 }
 
-func (l *apiLogger) Info(msg string, fields ...zap.Field) {
+func (l *Logger) Info(msg string, fields ...zap.Field) {
 	l.logger.Info(msg, fields...)
 }
 
-func (l *apiLogger) Fatal(msg string, fields ...zap.Field) {
+func (l *Logger) Fatal(msg string, fields ...zap.Field) {
 	l.logger.Fatal(msg, fields...)
 }
 
-func (l *apiLogger) Error(msg string, fields ...zap.Field) {
+func (l *Logger) Error(msg string, fields ...zap.Field) {
 	l.logger.Error(msg, fields...)
 }
 
-func (l *apiLogger) Debug(msg string, fields ...zap.Field) {
+func (l *Logger) Debug(msg string, fields ...zap.Field) {
 	l.logger.Debug(msg, fields...)
 }
 
-func New() (*apiLogger, error) {
+func New() (*Logger, error) {
 	config := zap.NewProductionConfig()
 	config.Level = zap.NewAtomicLevelAt(zap.DebugLevel) // Включаем Debug
 
@@ -36,7 +36,7 @@ func New() (*apiLogger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
-	return &apiLogger{logger: l}, nil
+	return &Logger{logger: l}, nil
 }
 
 type loggingResponseWriter struct {
@@ -61,7 +61,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.status = statusCode
 }
 
-func LogMiddleware(l apiLogger) func(http.Handler) http.Handler {
+func LogMiddleware(l Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()

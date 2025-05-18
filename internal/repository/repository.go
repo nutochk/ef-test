@@ -16,15 +16,15 @@ type Repository interface {
 	//TODO more get
 }
 
-type Repo struct {
+type repo struct {
 	db *pgx.Conn
 }
 
-func NewRepo(db *pgx.Conn) *Repo {
-	return &Repo{db: db}
+func NewRepo(db *pgx.Conn) *repo {
+	return &repo{db: db}
 }
 
-func (r *Repo) Create(p *models.PersonInfo) (*models.PersonInfo, error) {
+func (r *repo) Create(p *models.PersonInfo) (*models.PersonInfo, error) {
 	var exist bool
 	err := r.db.QueryRow(context.Background(), `SELECT EXISTS(SELECT 1 FROM people WHERE name = $1 AND surname = $2)`, p.Name, p.Surname).Scan(&exist)
 	if err != nil {
@@ -57,7 +57,7 @@ func (r *Repo) Create(p *models.PersonInfo) (*models.PersonInfo, error) {
 	return p, nil
 }
 
-func (r *Repo) Update(id int, i *models.Info) (*models.PersonInfo, error) {
+func (r *repo) Update(id int, i *models.Info) (*models.PersonInfo, error) {
 	exist, err := checkExistence(r, id)
 	if err != nil {
 		return nil, ErrCheckExistence(err)
@@ -93,7 +93,7 @@ func (r *Repo) Update(id int, i *models.Info) (*models.PersonInfo, error) {
 	return &p, nil
 }
 
-func (r *Repo) Delete(id int) (bool, error) {
+func (r *repo) Delete(id int) (bool, error) {
 	exist, err := checkExistence(r, id)
 	if err != nil {
 		return false, ErrCheckExistence(err)
@@ -125,7 +125,7 @@ func (r *Repo) Delete(id int) (bool, error) {
 	return true, nil
 }
 
-func (r *Repo) GetById(id int) (*models.PersonInfo, error) {
+func (r *repo) GetById(id int) (*models.PersonInfo, error) {
 	exist, err := checkExistence(r, id)
 	if err != nil {
 		return nil, ErrCheckExistence(err)
@@ -146,7 +146,7 @@ func (r *Repo) GetById(id int) (*models.PersonInfo, error) {
 	return &p, nil
 }
 
-func checkExistence(r *Repo, id int) (bool, error) {
+func checkExistence(r *repo, id int) (bool, error) {
 	var exist bool
 	err := r.db.QueryRow(context.Background(), `SELECT EXISTS(SELECT 1 FROM people WHERE id = $1 )`, id).Scan(&exist)
 	return exist, err
