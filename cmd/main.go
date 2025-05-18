@@ -46,7 +46,7 @@ func main() {
 	go func() {
 		logger.Info("Server is listening on port:" + strconv.Itoa(cfg.Port))
 		if err := apiServer.Run(cfg.Port); err != nil {
-			logger.Fatal("failed to start API server", zap.Error(err))
+			stop()
 		}
 	}()
 
