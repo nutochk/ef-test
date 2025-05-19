@@ -9,8 +9,8 @@ import (
 )
 
 type Repository interface {
-	Create(p *models.PersonInfo) (*models.PersonInfo, error)
-	Update(id int, i *models.Info) (*models.PersonInfo, error)
+	Create(p *models.PersonInfo) (int, error)
+	Update(id int, i *models.Person) (*models.PersonInfo, error)
 	Delete(id int) (bool, error)
 	GetById(id int) (*models.PersonInfo, error)
 	//TODO more get
@@ -24,40 +24,48 @@ func NewRepo(db *pgx.Conn) *repo {
 	return &repo{db: db}
 }
 
-func (r *repo) Create(p *models.PersonInfo) (*models.PersonInfo, error) {
-	var exist bool
-	err := r.db.QueryRow(context.Background(), `SELECT EXISTS(SELECT 1 FROM people WHERE name = $1 AND surname = $2)`, p.Name, p.Surname).Scan(&exist)
-	if err != nil {
-		return nil, ErrCheckExistence(err)
-	}
-	if !exist {
-		return nil, ErrAlreadyExist
-	}
+func (r *repo) Create(p *models.PersonInfo) (int, error) {
+	//var exist bool
+	//err := r.db.QueryRow(context.Background(), `SELECT EXISTS(SELECT 1 FROM people WHERE name = $1 AND surname = $2)`, p.Name, p.Surname).Scan(&exist)
+	//if err != nil {
+	//	return nil, ErrCheckExistence(err)
+	//}
+	//if !exist {
+	//	return nil, ErrAlreadyExist
+	//}
 
 	tx, err := r.db.Begin(context.Background())
 	if err != nil {
-		return nil, ErrBeginTransaction(err)
+		return 0, ErrBeginTransaction(err)
 	}
 	defer tx.Rollback(context.Background())
 
-	_, err = tx.Exec(context.Background(), `INSERT INTO people (name,surname, patronymic) VALUES ($1, $2, $3)`, p.Name, p.Surname, p.Patronymic)
+	var id int
+	err = tx.QueryRow(context.Background(), `INSERT INTO people (name,surname, patronymic) VALUES ($1, $2, $3) RETURNING id`, p.Name, p.Surname, p.Patronymic).Scan(&id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert into people table: %w", err)
+		return 0, fmt.Errorf("failed to insert into people table: %w", err)
 	}
 
-	_, err = tx.Exec(context.Background(), `INSERT INTO info (age, gender, nationality) VALUES ($1, $2, $3)`, p.Age, p.Gender, p.Nationality)
+	_, err = tx.Exec(context.Background(), `INSERT INTO info (person_id, age, gender, gender_probability) VALUES ($1, $2, $3, $4)`, id, p.Age, p.Gender, p.GenderProbability)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert into info table: %w", err)
+		return 0, fmt.Errorf("failed to insert into info table: %w", err)
+	}
+
+	for _, n := range p.Nationality {
+		_, err = tx.Exec(context.Background(), `INSERT INTO countries (person_id, nationality, probability) VALUES ($1, $2, $3)`, id, n.CountryId, n.Probability)
+		if err != nil {
+			return 0, fmt.Errorf("failed to insert into info table: %w", err)
+		}
 	}
 
 	err = tx.Commit(context.Background())
 	if err != nil {
-		return nil, ErrCommitTransaction(err)
+		return 0, ErrCommitTransaction(err)
 	}
-	return p, nil
+	return id, nil
 }
 
-func (r *repo) Update(id int, i *models.Info) (*models.PersonInfo, error) {
+func (r *repo) Update(id int, p *models.Person) (*models.PersonInfo, error) {
 	exist, err := checkExistence(r, id)
 	if err != nil {
 		return nil, ErrCheckExistence(err)
@@ -72,25 +80,40 @@ func (r *repo) Update(id int, i *models.Info) (*models.PersonInfo, error) {
 	}
 	defer tx.Rollback(context.Background())
 
-	_, err = tx.Exec(context.Background(), `UPDATE info SET age =$1, gender = $2, nationality = $3 WHERE id = $4`, i.Age, i.Gender, i.Nationality, id)
+	_, err = tx.Exec(context.Background(), `UPDATE people SET name =$1, surname = $2, patronymic = $3 WHERE id = $4`, p.Name, p.Surname, p.Patronymic, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update info table: %w", err)
 	}
 
-	var p models.PersonInfo
-	p.Age = i.Age
-	p.Gender = i.Gender
-	p.Nationality = i.Nationality
-	err = tx.QueryRow(context.Background(), `SELECT name, surname, patronymic FROM people WHERE id = $1`, id).Scan(&p.Name, &p.Surname, &p.Patronymic)
+	var pi models.PersonInfo
+	pi.Name = p.Name
+	pi.Surname = p.Surname
+	pi.Patronymic = p.Patronymic
+	err = tx.QueryRow(context.Background(), `SELECT age, gender, gender_probability FROM info WHERE person_id = $1`, id).Scan(&pi.Age, &pi.Gender, &pi.GenderProbability)
 	if err != nil {
 		return nil, ErrDatabase(err)
+	}
+
+	rows, err := tx.Query(context.Background(), `SELECT nationality, probability FROM countries WHERE person_id = $1`, id)
+	if err != nil {
+		return nil, ErrDatabase(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var c models.Country
+		err = rows.Scan(&c.CountryId, &c.Probability)
+		if err != nil {
+			return nil, ErrDatabase(err)
+		}
+		pi.Nationality = append(pi.Nationality, c)
 	}
 
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return nil, ErrCommitTransaction(err)
 	}
-	return &p, nil
+	return &pi, nil
 }
 
 func (r *repo) Delete(id int) (bool, error) {
@@ -108,14 +131,19 @@ func (r *repo) Delete(id int) (bool, error) {
 	}
 	defer tx.Rollback(context.Background())
 
-	_, err = tx.Exec(context.Background(), `DELETE FROM people WHERE id = $1`, id)
+	_, err = tx.Exec(context.Background(), `DELETE FROM countries WHERE person_id = $1`, id)
 	if err != nil {
-		return false, fmt.Errorf("failed to delete from people table: %w", err)
+		return false, fmt.Errorf("failed to delete from info table: %w", err)
 	}
 
 	_, err = tx.Exec(context.Background(), `DELETE FROM info WHERE person_id = $1`, id)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete from info table: %w", err)
+	}
+
+	_, err = tx.Exec(context.Background(), `DELETE FROM people WHERE id = $1`, id)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete from people table: %w", err)
 	}
 
 	err = tx.Commit(context.Background())
@@ -135,14 +163,30 @@ func (r *repo) GetById(id int) (*models.PersonInfo, error) {
 	}
 
 	var p models.PersonInfo
-	query := `SELECT p.name, p.surname, p.patronymic, i.age, i.gender, i.nationality 
+	query := `SELECT p.name, p.surname, p.patronymic, i.age, i.gender, i.gender_probability 
 		FROM people p 
 		JOIN info i ON p.id = i.person_id
 		WHERE p.id = $1`
-	err = r.db.QueryRow(context.Background(), query, id).Scan(&p.Name, &p.Surname, &p.Patronymic, &p.Age, &p.Gender, &p.Nationality)
+	err = r.db.QueryRow(context.Background(), query, id).Scan(&p.Name, &p.Surname, &p.Patronymic, &p.Age, &p.Gender, &p.GenderProbability)
 	if err != nil {
 		return nil, ErrDatabase(err)
 	}
+
+	rows, err := r.db.Query(context.Background(), `SELECT nationality, probability FROM countries WHERE person_id = $1`, id)
+	if err != nil {
+		return nil, ErrDatabase(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var c models.Country
+		err = rows.Scan(&c.CountryId, &c.Probability)
+		if err != nil {
+			return nil, ErrDatabase(err)
+		}
+		p.Nationality = append(p.Nationality, c)
+	}
+
 	return &p, nil
 }
 
