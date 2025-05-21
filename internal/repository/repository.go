@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/nutochk/ef-test/internal/dto"
 	"github.com/nutochk/ef-test/internal/models"
 )
 
@@ -13,7 +14,7 @@ type Repository interface {
 	Update(id int, i *models.Person) (*models.PersonInfo, error)
 	Delete(id int) (bool, error)
 	GetById(id int) (*models.PersonInfo, error)
-	//TODO more get
+	GetPeople(filters *dto.PersonFilter, pagination *dto.Pagination) (*[]dto.PersonInfo, int, error)
 }
 
 type repo struct {
@@ -25,15 +26,6 @@ func NewRepo(db *pgx.Conn) *repo {
 }
 
 func (r *repo) Create(p *models.PersonInfo) (int, error) {
-	//var exist bool
-	//err := r.db.QueryRow(context.Background(), `SELECT EXISTS(SELECT 1 FROM people WHERE name = $1 AND surname = $2)`, p.Name, p.Surname).Scan(&exist)
-	//if err != nil {
-	//	return nil, ErrCheckExistence(err)
-	//}
-	//if !exist {
-	//	return nil, ErrAlreadyExist
-	//}
-
 	tx, err := r.db.Begin(context.Background())
 	if err != nil {
 		return 0, ErrBeginTransaction(err)
@@ -188,6 +180,111 @@ func (r *repo) GetById(id int) (*models.PersonInfo, error) {
 	}
 
 	return &p, nil
+}
+
+func (r *repo) GetPeople(filters *dto.PersonFilter, pagination *dto.Pagination) (*[]dto.PersonInfo, int, error) {
+	selectQuery := `SELECT p.id, p.name, p.surname, p.patronymic, i.age, i.gender, i.gender_probability
+	FROM people p
+	JOIN info i ON p.id = i.person_id
+	WHERE 1 = 1`
+
+	filterQuery, args := addFilters(filters)
+
+	countQuery := `SELECT COUNT(*)
+	FROM people p
+	JOIN info i ON p.id = i.person_id
+	WHERE 1 = 1`
+
+	var total int
+	err := r.db.QueryRow(context.Background(), countQuery+filterQuery, *args...).Scan(&total)
+
+	pagQuery, limit, offset := addPagination(pagination, len(*args)+1)
+	*args = append(*args, limit, offset)
+
+	fmt.Println(limit, offset)
+	fmt.Println(pagination.PerPage, pagination.Page)
+	fmt.Println(args)
+
+	rows, err := r.db.Query(context.Background(), selectQuery+filterQuery+pagQuery, *args...)
+	if err != nil {
+		return nil, 0, ErrDatabase(err)
+	}
+	defer rows.Close()
+
+	var persons []dto.PersonInfo
+	for rows.Next() {
+		var p dto.PersonInfo
+		err = rows.Scan(&p.Id, &p.Name, &p.Surname, &p.Patronymic, &p.Age, &p.Gender, &p.GenderProbability)
+		if err != nil {
+			return nil, 0, ErrDatabase(err)
+		}
+		persons = append(persons, p)
+	}
+
+	fmt.Println(persons)
+
+	for i := 0; i < len(persons); i++ {
+		rows, err = r.db.Query(context.Background(), `SELECT nationality, probability FROM countries WHERE person_id = $1`, persons[i].Id)
+		if err != nil {
+			return nil, 0, ErrDatabase(err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var c models.Country
+			err = rows.Scan(&c.CountryId, &c.Probability)
+			if err != nil {
+
+				return nil, 0, ErrDatabase(err)
+			}
+			persons[i].Nationality = append(persons[i].Nationality, c)
+		}
+	}
+
+	fmt.Println(persons)
+
+	return &persons, total, nil
+}
+
+func addFilters(filters *dto.PersonFilter) (string, *[]interface{}) {
+	args := []interface{}{}
+	argPos := 1
+	var query string
+
+	if filters.Name != "" {
+		query += fmt.Sprintf(" AND p.name = $%d", argPos)
+		args = append(args, filters.Name)
+		argPos++
+	}
+
+	if filters.Surname != "" {
+		query += fmt.Sprintf(" AND p.surname = $%d", argPos)
+		args = append(args, filters.Surname)
+		argPos++
+	}
+
+	if filters.AgeMin > 0 {
+		query += fmt.Sprintf(" AND i.age >= $%d", argPos)
+		args = append(args, filters.AgeMin)
+		argPos++
+	}
+
+	if filters.AgeMax > 0 {
+		query += fmt.Sprintf(" AND i.age <= $%d", argPos)
+		args = append(args, filters.AgeMax)
+		argPos++
+	}
+
+	if filters.Gender != "" {
+		query += fmt.Sprintf(" AND i.gender = $%d", argPos)
+		args = append(args, filters.Gender)
+		argPos++
+	}
+	return query, &args
+}
+
+func addPagination(pagination *dto.Pagination, argPos int) (string, int, int) {
+	return fmt.Sprintf(" LIMIT CAST($%d AS INTEGER) OFFSET CAST($%d AS INTEGER)", argPos, argPos+1), pagination.PerPage, (pagination.Page - 1) * pagination.PerPage
 }
 
 func checkExistence(r *repo, id int) (bool, error) {

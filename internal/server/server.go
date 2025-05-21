@@ -32,9 +32,10 @@ func (s *Server) registerRouters() {
 	api := s.engine.Group("/api")
 	{
 		api.POST("/people", s.create)
-		api.POST("/people/:id", s.update)
+		api.PUT("/people/:id", s.update)
 		api.DELETE("/people/:id", s.delete)
 		api.GET("people/:id", s.getById)
+		api.GET("/people", s.getPeople)
 	}
 }
 

@@ -6,8 +6,7 @@ import (
 )
 
 var (
-	ErrAlreadyExist = errors.New("already exist")
-	ErrNotExist     = errors.New("not exist")
+	ErrNotExist = errors.New("not exist")
 )
 
 func ErrCheckExistence(e error) error {

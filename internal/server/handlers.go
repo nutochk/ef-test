@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nutochk/ef-test/internal/dto"
 	"github.com/nutochk/ef-test/internal/models"
 	"github.com/nutochk/ef-test/internal/repository"
 )
@@ -81,4 +82,29 @@ func (server *Server) getById(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, pi)
+}
+
+func (server *Server) getPeople(c *gin.Context) {
+	var filters dto.PersonFilter
+	if err := c.ShouldBindQuery(&filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid filters"})
+		return
+	}
+	var pagination dto.Pagination
+	if err := c.ShouldBindQuery(&pagination); err != nil {
+		pagination = dto.Pagination{Page: 1, PerPage: 10}
+	}
+	if pagination.Page <= 0 {
+		pagination.Page = 1
+	}
+	if pagination.PerPage <= 0 {
+		pagination.PerPage = 10
+	}
+
+	response, err := server.service.GetPeople(&filters, &pagination)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "failed to find people with filters")
+		return
+	}
+	c.JSON(http.StatusOK, response)
 }

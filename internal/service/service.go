@@ -13,6 +13,7 @@ type Service interface {
 	Update(id int, i *models.Person) (*models.PersonInfo, error)
 	Delete(id int) error
 	GetById(id int) (*models.PersonInfo, error)
+	GetPeople(filters *dto.PersonFilter, pagination *dto.Pagination) (*dto.PaginatedResponse, error)
 }
 
 type service struct {
@@ -94,4 +95,22 @@ func (s *service) GetById(id int) (*models.PersonInfo, error) {
 		return nil, err
 	}
 	return pi, nil
+}
+
+func (s *service) GetPeople(filters *dto.PersonFilter, pagination *dto.Pagination) (*dto.PaginatedResponse, error) {
+	s.logger.Debug("get people method in service")
+	people, total, err := s.repo.GetPeople(filters, pagination)
+	if err != nil {
+		s.logger.Error("failed to get people in repository", zap.Error(err))
+		return nil, err
+	}
+	response := dto.PaginatedResponse{
+		Data: people,
+		Pagination: struct {
+			Total       int `json:"total"`
+			CurrentPage int `json:"current_page"`
+			PerPage     int `json:"per_page"`
+		}{Total: total, CurrentPage: pagination.Page, PerPage: pagination.PerPage},
+	}
+	return &response, nil
 }
