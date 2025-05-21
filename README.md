@@ -35,24 +35,24 @@ Creates a new record with data enrichment from external APIs
 {
    "name": "string",
    "surname": "string",
-   "patronomic": "string"/null
+   "patronomic": "string"
 }
 ```
 
 *Response:*
 ``` json
 {
-    "id": int,
+    "id": "int",
     "name": "string",
     "surname": "string",
     "patronymic": "string",
-    "age": int,
+    "age": "int",
     "gender": "string",
-    "gender_probability": float,
+    "gender_probability": "float",
     "nationality": [
         {
             "country_id": "string",
-            "probability": float
+            "probability": "float"
         },
         ...
     ]
@@ -69,26 +69,25 @@ Updates the record of an existing person
 {
    "name": "string",
    "surname": "string",
-   "patronomic": "string"/null
+   "patronomic": "string"
 }
 ```
 
 *Response:*
 ``` json
 {
-    "id": int,
+    "id": "int",
     "name": "string",
     "surname": "string",
     "patronymic": "string",
-    "age": int,
+    "age": "int",
     "gender": "string",
-    "gender_probability": float,
+    "gender_probability": "float",
     "nationality": [
         {
             "country_id": "string",
-            "probability": float
-        },
-        ...
+            "probability": "float"
+        }
     ]
 }
 ```
@@ -106,19 +105,18 @@ Get the record of an existing person
 *Response:*
 ``` json
 {
-    "id": int,
+    "id": "int",
     "name": "string",
     "surname": "string",
     "patronymic": "string",
-    "age": int,
+    "age": "int",
     "gender": "string",
-    "gender_probability": float,
+    "gender_probability": "float",
     "nationality": [
         {
             "country_id": "string",
-            "probability": float
-        },
-        ...
+            "probability": "float"
+        }
     ]
 }
 ```
@@ -133,27 +131,25 @@ Returns a list of people with the ability to filter and paginate
 {
     "data": [
         {
-            "id": int,
+            "id": "int",
             "name": "string",
             "surname": "string",
             "patronymic": "string",
-            "age": int,
+            "age": "int",
             "gender": "string",
-            "gender_probability": float,
+            "gender_probability": "float",
             "nationality": [
                 {
                     "country_id": "string",
-                    "probability": float
-                },
-                ...
+                    "probability": "float"
+                }
             ]
-        },
-       ...
+        }
     ],
     "pagination": {
-        "total": int,
-        "current_page": int,
-        "per_page": int
+        "total": "int",
+        "current_page": "int",
+        "per_page": "int"
     }
 }
 ```
