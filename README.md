@@ -53,8 +53,7 @@ Creates a new record with data enrichment from external APIs
         {
             "country_id": "string",
             "probability": "float"
-        },
-        ...
+        }
     ]
 }
 ```
