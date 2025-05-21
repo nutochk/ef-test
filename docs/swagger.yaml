@@ -1,0 +1,262 @@
+definitions:
+  dto.PaginatedResponse:
+    properties:
+      data: {}
+      pagination:
+        properties:
+          current_page:
+            type: integer
+          per_page:
+            type: integer
+          total:
+            type: integer
+        type: object
+    type: object
+  dto.PersonInfo:
+    properties:
+      age:
+        type: integer
+      gender:
+        type: string
+      gender_probability:
+        type: number
+      id:
+        type: integer
+      name:
+        type: string
+      nationality:
+        items:
+          $ref: '#/definitions/models.Country'
+        type: array
+      patronymic:
+        type: string
+      surname:
+        type: string
+    type: object
+  models.Country:
+    properties:
+      country_id:
+        type: string
+      probability:
+        type: number
+    type: object
+  models.Person:
+    properties:
+      name:
+        type: string
+      patronymic:
+        type: string
+      surname:
+        type: string
+    type: object
+  models.PersonInfo:
+    properties:
+      age:
+        type: integer
+      gender:
+        type: string
+      gender_probability:
+        type: number
+      name:
+        type: string
+      nationality:
+        items:
+          $ref: '#/definitions/models.Country'
+        type: array
+      patronymic:
+        type: string
+      surname:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/people:
+    get:
+      consumes:
+      - application/json
+      description: Returns a list of people with the ability to filter and paginate
+      parameters:
+      - description: Filter by name
+        in: query
+        name: name
+        type: string
+      - description: Filter by last name
+        in: query
+        name: surname
+        type: string
+      - description: Minimum age
+        in: query
+        name: age_min
+        type: integer
+      - description: Maximum age
+        in: query
+        name: age_max
+        type: integer
+      - description: Gender filter (male/female)
+        in: query
+        name: gender
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of entries per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PaginatedResponse'
+        "400":
+          description: Incorrect filtering parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: Get a list of people with filtering
+      tags:
+      - people
+    post:
+      consumes:
+      - application/json
+      description: Creates a new record with data enrichment from external APIs
+      parameters:
+      - description: Personal data
+        in: body
+        name: person
+        required: true
+        schema:
+          $ref: '#/definitions/models.Person'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PersonInfo'
+        "400":
+          description: Incorrect data format
+          schema:
+            type: string
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: create new record about person
+      tags:
+      - people
+  /api/people/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete the record of an existing person
+      parameters:
+      - description: Person ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Incorrect data format
+          schema:
+            type: string
+        "404":
+          description: Not found
+          schema:
+            type: string
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: delete record about person
+      tags:
+      - people
+    get:
+      consumes:
+      - application/json
+      description: get the record of an existing person
+      parameters:
+      - description: Person ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.PersonInfo'
+            type: array
+        "400":
+          description: Incorrect data format
+          schema:
+            type: string
+        "404":
+          description: Not found
+          schema:
+            type: string
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: get by id record about person
+      tags:
+      - people
+    put:
+      consumes:
+      - application/json
+      description: Updates the record of an existing person
+      parameters:
+      - description: Person ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Personal data
+        in: body
+        name: person
+        required: true
+        schema:
+          $ref: '#/definitions/models.Person'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PersonInfo'
+        "400":
+          description: Incorrect data format
+          schema:
+            type: string
+        "404":
+          description: Not found
+          schema:
+            type: string
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: update record about person
+      tags:
+      - people
+swagger: "2.0"

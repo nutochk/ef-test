@@ -2,6 +2,7 @@ package dto
 
 import "github.com/nutochk/ef-test/internal/models"
 
+// PersonInfo information about person with id
 type PersonInfo struct {
 	Id                int              `json:"id"`
 	Name              string           `json:"name"`
@@ -26,6 +27,7 @@ type Pagination struct {
 	PerPage int `form:"per_page"`
 }
 
+// PaginatedResponse information about people and pagination
 type PaginatedResponse struct {
 	Data       interface{} `json:"data"`
 	Pagination struct {

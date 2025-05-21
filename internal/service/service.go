@@ -37,7 +37,7 @@ func (s *service) Create(p *models.Person) (*dto.PersonInfo, error) {
 		s.logger.Error("failed to get gender in create method", zap.Error(err))
 		return nil, err
 	}
-	countries, err := getContries(p.Name)
+	countries, err := getCountries(p.Name)
 	if err != nil {
 		s.logger.Error("failed to get countries in create method", zap.Error(err))
 	}

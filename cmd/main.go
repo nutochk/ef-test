@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"syscall"
 
+	_ "github.com/nutochk/ef-test/docs"
 	"github.com/nutochk/ef-test/internal/config"
 	"github.com/nutochk/ef-test/internal/repository"
 	"github.com/nutochk/ef-test/internal/server"

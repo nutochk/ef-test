@@ -45,7 +45,7 @@ func getGender(name string) (string, float64, error) {
 	return result.Gender, result.Probability, nil
 }
 
-func getContries(name string) ([]models.Country, error) {
+func getCountries(name string) ([]models.Country, error) {
 	url := fmt.Sprintf("https://api.nationalize.io/?name=%s", name)
 	resp, err := http.Get(url)
 	if err != nil {
